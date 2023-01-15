@@ -2,8 +2,7 @@ extern crate pnet;
 extern crate pnet_datalink;
 
 
-use std::net::{Ipv4Addr, IpAddr};
-use pnet::packet::{Packet};
+use std::net::{ IpAddr};
 use pnet::packet::arp::{MutableArpPacket,ArpOperations };
 use pnet::packet::ethernet::{MutableEthernetPacket,EtherTypes};
 use pnet_datalink::MacAddr;
@@ -16,7 +15,7 @@ pub struct PacketInitializer{
 impl PacketInitializer {
 
     pub fn initialize_arp_request_packet(arp_packet : &mut MutableArpPacket, my_mac : MacAddr, my_ip : IpAddr, target_ip : IpAddr){
-
+        Some((my_ip));
         let my_ip = match my_ip{
             std::net::IpAddr::V4(ip) => ip,
             std::net::IpAddr::V6(ip) => panic!("ARP scanner cannot be performed with IPv6 addresses"),
