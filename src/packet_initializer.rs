@@ -2,11 +2,15 @@ extern crate pnet;
 extern crate pnet_datalink;
 
 
-use std::net::{ IpAddr};
+use std::net::{ IpAddr };
+use pnet::packet::Packet;
 use pnet::packet::arp::{MutableArpPacket,ArpOperations };
-use pnet::packet::ethernet::{MutableEthernetPacket,EtherTypes};
+use pnet::packet::ethernet::{MutableEthernetPacket, EtherType};
+use pnet::packet::icmp::{IcmpTypes, IcmpPacket};
+use pnet::packet::ip::IpNextHeaderProtocols;
+use pnet::packet::ipv4::{MutableIpv4Packet, checksum, Ipv4Packet};
 use pnet_datalink::MacAddr;
-
+use pnet::packet::icmp::echo_request::{IcmpCodes, MutableEchoRequestPacket};
 
 pub struct PacketInitializer{
 
@@ -15,7 +19,7 @@ pub struct PacketInitializer{
 impl PacketInitializer {
 
     pub fn initialize_arp_request_packet(arp_packet : &mut MutableArpPacket, my_mac : MacAddr, my_ip : IpAddr, target_ip : IpAddr){
-        Some((my_ip));
+       
         let my_ip = match my_ip{
             std::net::IpAddr::V4(ip) => ip,
             std::net::IpAddr::V6(ip) => panic!("ARP scanner cannot be performed with IPv6 addresses"),
@@ -45,13 +49,58 @@ impl PacketInitializer {
      
      }
      
-    pub fn initialize_ethernet_packet(ethernet_packet : &mut MutableEthernetPacket, my_mac : MacAddr, payload : &[u8]){
+    pub fn initialize_ethernet_packet(ethernet_packet : &mut MutableEthernetPacket,my_mac : MacAddr, target_mac : MacAddr, ether_type : EtherType, payload : &[u8]){
      
-        ethernet_packet.set_destination(MacAddr::new(0xff, 0xff, 0xff, 0xff, 0xff, 0xff));
+        ethernet_packet.set_destination(target_mac);
         ethernet_packet.set_source(my_mac);
-        ethernet_packet.set_ethertype(EtherTypes::Arp);
+        ethernet_packet.set_ethertype(ether_type);
         ethernet_packet.set_payload(payload);
 
      }
+
+
+    pub fn initialize_ip_packet(ip_packet : &mut MutableIpv4Packet, my_ip : IpAddr, target_ip : IpAddr, payload : &[u8]){
+
+        let my_ip = match my_ip{
+            std::net::IpAddr::V4(ip) => ip,
+            std::net::IpAddr::V6(ip) => panic!("ARP scanner cannot be performed with IPv6 addresses"),
+        };
+
+        let target_ip = match target_ip{
+            std::net::IpAddr::V4(ip) => ip,
+            std::net::IpAddr::V6(ip) => panic!("ARP scanner cannot be performed with IPv6 addresses"),
+        };
+
+        ip_packet.set_version(4);
+        ip_packet.set_header_length(5);
+        ip_packet.set_dscp(0);
+        ip_packet.set_ecn(0);
+        ip_packet.set_total_length((ip_packet.packet().len()+payload.len()).try_into().unwrap());
+        let id = rand::random::<u16>();
+        ip_packet.set_identification(id);
+        ip_packet.set_flags(0);
+        ip_packet.set_fragment_offset(0);
+        ip_packet.set_ttl(64);
+        ip_packet.set_next_level_protocol(IpNextHeaderProtocols::Icmp);
+        ip_packet.set_source(my_ip);
+        ip_packet.set_destination(target_ip);
+        ip_packet.set_payload(payload);
+        
+        ip_packet.set_checksum(checksum(&Ipv4Packet::new(ip_packet.packet()).unwrap()));
+        
+    
+     }
+
+    pub fn initialize_echo_request_packet(echo_request_packet : &mut MutableEchoRequestPacket){
+
+        echo_request_packet.set_icmp_type(IcmpTypes::EchoRequest);
+        echo_request_packet.set_icmp_code(IcmpCodes::NoCode);
+        let id = rand::random::<u16>();
+        echo_request_packet.set_identifier(id);
+        echo_request_packet.set_payload("dsofidsfds".as_bytes());
+        echo_request_packet.set_checksum(pnet::packet::icmp::checksum(&IcmpPacket::new(echo_request_packet.packet()).unwrap()));
+       
+    }
+
 
 }

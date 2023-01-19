@@ -3,7 +3,6 @@ extern crate pnet_datalink;
 
 
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::thread;
 
 use crate::network_user::NetworkUser;
@@ -24,7 +23,7 @@ use pnet_datalink::channel;
 pub struct ArpScanner{
 
     scanner_retries : u8,
-    interface : Arc<NetworkInterface>
+    interface : NetworkInterface
 
 }
 
@@ -38,7 +37,7 @@ impl ArpScanner{
             Some(i) => {
 
                 ArpScanner{
-                    interface : Arc::new(i.clone()),
+                    interface : i.clone(),
                     scanner_retries : 5
                 }
             },
@@ -68,7 +67,7 @@ impl ArpScanner{
             let my_ip = network_ip.ip();
             let my_mac = self.interface.mac.unwrap();
 
-            let handler_tx = thread::spawn( move ||{
+            let handler_tx = thread::spawn(move ||{
                 
                 
                 for (i , target_ip) in network_ip.iter().enumerate(){
@@ -79,10 +78,12 @@ impl ArpScanner{
                     PacketInitializer::initialize_arp_request_packet(&mut arp_packet, my_mac, my_ip, target_ip);
     
                     let mut ethernet_packet = PacketFactory::create_ethernet_packet();
-                    PacketInitializer::initialize_ethernet_packet(&mut ethernet_packet, my_mac, arp_packet.packet());
+                    let target_mac = MacAddr::new(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
+                    PacketInitializer::initialize_ethernet_packet(&mut ethernet_packet, my_mac,target_mac,EtherTypes::Arp, arp_packet.packet());
                     
                     for j in 1..20{
 
+                    
                         match tx.send_to(ethernet_packet.packet(), None){
         
                             Some(r) => match r {
@@ -98,7 +99,7 @@ impl ArpScanner{
 
             });
 
-            let handler_rx = thread::spawn( move ||{
+            let handler_rx = thread::spawn(move ||{
                 
                 loop{
 
@@ -121,6 +122,7 @@ impl ArpScanner{
                                 };
                                 
                                 users.insert(user.mac, user);
+                                
                                 }
                                 
                             }

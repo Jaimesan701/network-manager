@@ -1,18 +1,20 @@
 pub mod packet_initializer;
 pub mod packet_factory;
 pub mod arp_scanner;
+pub mod icmp_scanner;
 pub mod network_user;
 
 extern crate pnet;
 extern crate pnet_datalink;
 
 
+use icmp_scanner::IcmpScanner;
 use crate::arp_scanner::ArpScanner;
 
 fn main() {
   
 
-   let scanner = ArpScanner::new("wlp2s0").unwrap_or_else(|| panic!("Error with the interface"));
+   let scanner = IcmpScanner::new("wlp2s0").unwrap_or_else(|| panic!("Error with the interface"));
    scanner.perform_scanner();
 
   
