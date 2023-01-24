@@ -14,7 +14,7 @@ use crate::arp_scanner::ArpScanner;
 fn main() {
   
 
-   let scanner = IcmpScanner::new("wlp2s0").unwrap_or_else(|| panic!("Error with the interface"));
+   let scanner = ArpScanner::new("wlp2s0").unwrap_or_else(|| panic!("Error with the interface"));
    scanner.perform_scanner();
 
   

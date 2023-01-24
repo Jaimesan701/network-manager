@@ -3,7 +3,9 @@ extern crate pnet_datalink;
 
 
 use std::collections::HashMap;
+use std::sync::mpsc;
 use std::thread;
+use std::time::Duration;
 
 use crate::network_user::NetworkUser;
 use crate::packet_factory::PacketFactory;
@@ -67,6 +69,8 @@ impl ArpScanner{
             let my_ip = network_ip.ip();
             let my_mac = self.interface.mac.unwrap();
 
+            let (thread_tx, thread_rx) = mpsc::channel();
+
             let handler_tx = thread::spawn(move ||{
                 
                 
@@ -78,7 +82,7 @@ impl ArpScanner{
                     PacketInitializer::initialize_arp_request_packet(&mut arp_packet, my_mac, my_ip, target_ip);
     
                     let mut ethernet_packet = PacketFactory::create_ethernet_packet();
-                    let target_mac = MacAddr::new(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
+                    let target_mac = MacAddr::new(0xff, 0xff, 0xff, 0xff,  0xff, 0xff);
                     PacketInitializer::initialize_ethernet_packet(&mut ethernet_packet, my_mac,target_mac,EtherTypes::Arp, arp_packet.packet());
                     
                     for j in 1..20{
@@ -90,14 +94,18 @@ impl ArpScanner{
                                 Ok(_) => {},
                                 Err(e) => panic!("{e}"),
                             },
-                            None => println!("Paquete NO enviado"),
+                            None => println!("Packet hasn't been sended"),
                         };
 
                     }
                         
                 };
 
+            thread_tx.send(true).unwrap_or_else(|e| panic!("Message couldn't be sended: {e}"));
+
             });
+
+            let (producer_tx, consumer_tx) = mpsc::channel();
 
             let handler_rx = thread::spawn(move ||{
                 
@@ -121,7 +129,7 @@ impl ArpScanner{
                                
                                 };
                                 
-                                users.insert(user.mac, user);
+                                producer_tx.send(user).unwrap_or_else(|e| panic!("Message couldn't be sended: {e}"));
                                 
                                 }
                                 
@@ -131,13 +139,28 @@ impl ArpScanner{
                         Err(_) => println!("No ha sido posible recibir una trama"),
                     
                     };
+
+                    let message = thread_rx.recv_timeout(Duration::from_millis(10));
+                    if message == Ok(true){
+
+                        break;
+
+                    }
                 }
             
             });
 
+            for data_rcv in consumer_tx{
+
+                users.insert(data_rcv.mac, data_rcv);
+            
+            }
+
             handler_tx.join();
             handler_rx.join();
-
+            
+            
+            println!("{:#?}",users);
             /*
             for (i , target_ip) in network_ip.iter().enumerate(){
                 
