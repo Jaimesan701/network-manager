@@ -1,6 +1,6 @@
-
 use std::net::Ipv4Addr;
-use pnet_datalink::MacAddr;
+
+use pnet::util::MacAddr;
 
 #[derive(Debug)]
 pub struct NetworkUser{

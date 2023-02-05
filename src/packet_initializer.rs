@@ -1,11 +1,10 @@
 extern crate pnet;
-extern crate pnet_datalink;
 
 
 use std::net::{ IpAddr};
 use pnet::packet::arp::{MutableArpPacket,ArpOperations };
 use pnet::packet::ethernet::{MutableEthernetPacket,EtherTypes};
-use pnet_datalink::MacAddr;
+use pnet::util::MacAddr;
 
 
 pub struct PacketInitializer{

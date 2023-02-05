@@ -4,7 +4,6 @@ pub mod arp_scanner;
 pub mod network_user;
 
 extern crate pnet;
-extern crate pnet_datalink;
 
 
 use crate::arp_scanner::ArpScanner;
@@ -12,7 +11,7 @@ use crate::arp_scanner::ArpScanner;
 fn main() {
   
 
-   let scanner = ArpScanner::new("wlp2s0").unwrap_or_else(|| panic!("Error with the interface"));
+   let scanner = ArpScanner::new("ens33").unwrap_or_else(|| panic!("Error with the interface"));
    scanner.perform_scanner();
 
   

@@ -1,6 +1,4 @@
 extern crate pnet;
-extern crate pnet_datalink;
-
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -10,16 +8,14 @@ use crate::network_user::NetworkUser;
 use crate::packet_factory::PacketFactory;
 use crate::packet_initializer::PacketInitializer;
 
+use pnet::datalink::{NetworkInterface, interfaces,channel};
+use pnet::datalink::Channel::Ethernet;
 use pnet::packet::Packet;
-use pnet::packet::arp::ArpOperations;
-use pnet::packet::arp::ArpPacket;
-use pnet::packet::ethernet::EtherTypes;
-use pnet::packet::ethernet::EthernetPacket;
-use pnet_datalink::Channel::Ethernet;
-use pnet_datalink::MacAddr;
-use pnet_datalink::NetworkInterface;
-use pnet_datalink::interfaces;
-use pnet_datalink::channel;
+use pnet::packet::arp::{ArpOperations,ArpPacket};
+use pnet::packet::ethernet::{EtherTypes,EthernetPacket};
+use pnet::util::MacAddr;
+
+
 
 pub struct ArpScanner{
 

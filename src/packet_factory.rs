@@ -1,6 +1,5 @@
 
 extern crate pnet;
-extern crate pnet_datalink;
 
 
 
