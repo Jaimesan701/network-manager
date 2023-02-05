@@ -1,5 +1,5 @@
 extern crate pnet;
-extern crate pnet_datalink;
+
 
 
 use std::net::{ IpAddr };
@@ -9,8 +9,8 @@ use pnet::packet::ethernet::{MutableEthernetPacket, EtherType};
 use pnet::packet::icmp::{IcmpTypes, IcmpPacket};
 use pnet::packet::ip::IpNextHeaderProtocols;
 use pnet::packet::ipv4::{MutableIpv4Packet, checksum, Ipv4Packet};
-use pnet_datalink::MacAddr;
 use pnet::packet::icmp::echo_request::{IcmpCodes, MutableEchoRequestPacket};
+use pnet::util::MacAddr;
 
 pub struct PacketInitializer{
 

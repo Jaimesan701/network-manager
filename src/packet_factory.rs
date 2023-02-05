@@ -1,13 +1,12 @@
 
 extern crate pnet;
-extern crate pnet_datalink;
+
 
 
 
 use pnet::packet::arp::{MutableArpPacket };
 use pnet::packet::ethernet::{MutableEthernetPacket};
 use pnet::packet::icmp::echo_request::MutableEchoRequestPacket;
-use pnet::packet::icmp::echo_reply::MutableEchoReplyPacket;
 use pnet::packet::ipv4::MutableIpv4Packet;
 
 pub struct PacketFactory{
