@@ -9,8 +9,9 @@ pub enum ManagerType{
 pub struct ManagerFactory;
 
 impl ManagerFactory {
-    fn new_shape(s: &ManagerType) -> Box<dyn ScannerManager> {
 
+    pub fn new_manager(s: &ManagerType) -> Box<dyn ScannerManager + Send> {
+        
         match s {
 
             ManagerType::ICMP => Box::new(IcmpScannerManager {}),

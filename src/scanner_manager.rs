@@ -1,4 +1,6 @@
-use pnet::{packet::{ethernet::{EthernetPacket, EtherTypes}, Packet, arp::ArpPacket, icmp::IcmpPacket}, util::MacAddr};
+use std::{net::IpAddr, borrow::Cow, any::Any};
+
+use pnet::{packet::{ethernet::{EthernetPacket, EtherTypes}, Packet, arp::{ArpPacket, ArpOperations}, ipv4::{Ipv4, Ipv4Packet}, ip::IpNextHeaderProtocols, icmp::{IcmpPacket, IcmpType, IcmpTypes}}, util::MacAddr};
 
 use crate::{network_user::NetworkUser, packet_factory::PacketFactory, packet_initializer::PacketInitializer};
 
@@ -6,8 +8,8 @@ use crate::{network_user::NetworkUser, packet_factory::PacketFactory, packet_ini
 
 pub trait ScannerManager{
 
-    fn create_packet(&self) -> &[u8];
-    fn parse_packet(&self, packet : EthernetPacket) -> NetworkUser;
+    fn create_packet(&self, my_ip : IpAddr, target_ip: IpAddr, my_mac: MacAddr) -> Vec<u8>;
+    fn parse_packet(&self, packet : EthernetPacket) -> Option<NetworkUser>;
 
 }
 
@@ -16,10 +18,19 @@ pub trait ScannerManager{
 pub struct ArpScannerManager{
 
 }
+impl ArpScannerManager{
+
+    pub fn new() -> ArpScannerManager{
+        ArpScannerManager{
+
+        }
+    }
+
+}
 
 impl ScannerManager for ArpScannerManager{
 
-    fn create_packet(&self) -> &[u8] {
+    fn create_packet(&self, my_ip : IpAddr, target_ip: IpAddr, my_mac: MacAddr) -> Vec<u8> {
 
         let mut arp_packet = PacketFactory::create_arp_packet();
         PacketInitializer::initialize_arp_request_packet(&mut arp_packet, my_mac, my_ip, target_ip);
@@ -27,14 +38,27 @@ impl ScannerManager for ArpScannerManager{
         let mut ethernet_packet = PacketFactory::create_ethernet_packet();
         let target_mac = MacAddr::new(0xff, 0xff, 0xff, 0xff,  0xff, 0xff);
         PacketInitializer::initialize_ethernet_packet(&mut ethernet_packet, my_mac,target_mac,EtherTypes::Arp, arp_packet.packet());
-        ethernet_packet.packet()
+
+        let packet = ethernet_packet.packet().to_vec();
+
+        packet
 
     }
 
-    fn parse_packet(&self, packet : EthernetPacket) -> NetworkUser {
-        
-        let arp_packet = ArpPacket::owned(packet.packet()).unwrap();
-        NetworkUser { ip: arp_packet.get_sender_proto_addr(), mac: arp_packet.get_sender_hw_addr() }
+    fn parse_packet(&self, packet : EthernetPacket) -> Option<NetworkUser> {
+
+        if packet.get_ethertype() == EtherTypes::Arp{
+
+            let arp_packet = ArpPacket::owned(packet.packet().to_vec()).unwrap();
+            if (arp_packet.get_operation() == ArpOperations::Reply){   
+
+                return Some(NetworkUser { ip: arp_packet.get_sender_proto_addr(), mac: arp_packet.get_sender_hw_addr() });
+            
+            }
+        }
+            
+            None
+
     }
 }
 
@@ -42,9 +66,21 @@ pub struct IcmpScannerManager{
 
 }
 
+impl IcmpScannerManager{
+
+    pub fn new() -> IcmpScannerManager{
+
+        IcmpScannerManager {  
+            
+        }
+
+    }
+
+}
+
 impl ScannerManager for IcmpScannerManager{
 
-    fn create_packet(&self) -> &[u8] {
+    fn create_packet(&self, my_ip : IpAddr, target_ip: IpAddr, my_mac: MacAddr) -> Vec<u8>{
         
         let mut echo_request_packet = PacketFactory::create_echo_request_packet();
         PacketInitializer::initialize_echo_request_packet(&mut echo_request_packet);
@@ -56,16 +92,32 @@ impl ScannerManager for IcmpScannerManager{
         let target_mac = MacAddr::new(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
         PacketInitializer::initialize_ethernet_packet(&mut ethernet_packet, my_mac,target_mac,EtherTypes::Ipv4, ip_packet.packet());
 
-        ethernet_packet.packet()
+        let packet = ethernet_packet.packet().to_vec();
+
+        packet
         
     }
 
-    fn parse_packet(&self, packet : EthernetPacket) -> NetworkUser {
+    fn parse_packet(&self, packet : EthernetPacket) -> Option<NetworkUser> {
         
         if packet.get_ethertype() == EtherTypes::Ipv4{
 
-            todo!()
+            let mac_addr = packet.get_source();
+            let ip_packet = Ipv4Packet::new(packet.payload()).unwrap();
+
+            if ip_packet.get_next_level_protocol() == IpNextHeaderProtocols::Icmp{
+                
+                let ip_addr = ip_packet.get_source();
+                let icmp_packet = IcmpPacket::new(ip_packet.payload()).unwrap();
+                if icmp_packet.get_icmp_type() == IcmpTypes::EchoRequest{
+
+                    return Some(NetworkUser { ip: ip_addr, mac: mac_addr});
+
+                }
+            }
         }
+
+        None
 
     }
 }
