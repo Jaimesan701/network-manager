@@ -1,8 +1,9 @@
 extern crate pnet;
 
 use std::collections::HashMap;
-use std::sync::mpsc::{self, Sender};
-use std::thread;
+use std::sync::mpsc::{self, Sender, Receiver};
+use std::{thread, time};
+use std::time::Duration;
 
 use crate::manager_factory::{ManagerType, ManagerFactory};
 use crate::network_user::NetworkUser;
@@ -67,23 +68,24 @@ impl Scanner{
             let network_ip = self.interface.ips[0];
             let my_mac = self.interface.mac.unwrap();
 
-            let manager = ManagerFactory::new_manager(&self.manager_type) as Box<dyn ScannerManager + Send>;            
+            let manager = ManagerFactory::new_manager(&self.manager_type) as Box<dyn ScannerManager + Send>; 
+            let (producer_tx, consumer_tx) = mpsc::channel::<Option<NetworkUser>>();
+            let handler_rx = thread::spawn(|| Scanner::receive_packet(rx,producer_tx,manager));
 
+            let manager = ManagerFactory::new_manager(&self.manager_type) as Box<dyn ScannerManager + Send>;   
             let handler_tx = thread::spawn(move || Scanner::send_packet(tx,manager,network_ip,my_mac));
 
-            let manager = ManagerFactory::new_manager(&self.manager_type) as Box<dyn ScannerManager + Send>; 
-        
-            let (producer_tx, consumer_tx) = mpsc::channel::<Option<NetworkUser>>();
-            
-            let handler_rx = thread::spawn(|| Scanner::receive_packet(rx,producer_tx,manager));
+
             
             for data_rcv in consumer_tx{
 
                 match data_rcv{
+
                     Some(user) => users.insert(user.mac, user),
                     None => None,
+
                 };
-                            
+
             }
 
             handler_tx.join();
@@ -101,10 +103,10 @@ impl Scanner{
 
             for (_i,target_ip) in ip.iter().enumerate(){
 
-                for _i in 1..20{
+                for _i in 1..10{
                 
                     let packet = scanner_manager.create_packet(my_ip,target_ip,my_mac);
-                    match transmitter.send_to(&packet[1..], None){
+                    match transmitter.send_to(&packet[0..], None){
                     
                         Some(r) => match r {
                             Ok(_) => {},
@@ -115,6 +117,7 @@ impl Scanner{
             
                 }
 
+
             }
                 
     
@@ -122,14 +125,14 @@ impl Scanner{
     
         fn receive_packet(mut receiver: Box<dyn DataLinkReceiver>,producer_tx : Sender<Option<NetworkUser>>,scanner_manager : Box<dyn ScannerManager>){
             
-            loop{
+            let mut rcv_termination = false;
+            while !rcv_termination{
     
                 match receiver.next(){
     
                     Ok(packet) => {
-            
+                        
                         let ethernet_packet = EthernetPacket::new(packet).unwrap_or_else(|| panic!("No se ha podido decodificar el paquete"));
-            
                         let user = scanner_manager.parse_packet(ethernet_packet); 
                         
                         producer_tx.send(user);

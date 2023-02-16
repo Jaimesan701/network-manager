@@ -49,9 +49,12 @@ impl ScannerManager for ArpScannerManager{
 
         if packet.get_ethertype() == EtherTypes::Arp{
 
-            let arp_packet = ArpPacket::owned(packet.packet().to_vec()).unwrap();
+            let arp_packet = ArpPacket::owned(packet.payload().to_vec()).unwrap();
+            println!("{:?}",arp_packet);
+
             if (arp_packet.get_operation() == ArpOperations::Reply){   
 
+                println!("{:?}",arp_packet);
                 return Some(NetworkUser { ip: arp_packet.get_sender_proto_addr(), mac: arp_packet.get_sender_hw_addr() });
             
             }
